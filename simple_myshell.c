@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
+#include "commands/change_directory.h"
+#include "commands/get_current_directory.h"
+
 #define MAX_CMD_ARG 10
-#define BUFSIZ 256
+#define BUF_SIZE 256
 
 #define CD 0
 #define PWD 1
@@ -13,12 +16,12 @@
 
 const char *prompt = "myshell> ";
 char *cmdvector[MAX_CMD_ARG];
-char cmdline[BUFSIZ];
+char cmdline[BUF_SIZE];
 char *commands[3] = {"cd", "pwd", "exit"};
 
 int is_builtin();
 
-void do_command(char *string, char *pString[10], int i);
+void do_command(char *string, char *cmdlist[10], int i);
 
 void fatal(char *str) {
     perror(str);
@@ -52,7 +55,7 @@ int main(int argc, char **argv) {
     pid_t pid;
     while (1) {
         fputs(prompt, stdout);
-        fgets(cmdline, BUFSIZ, stdin);
+        fgets(cmdline, BUF_SIZE, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
         makelist(cmdline, " \t", cmdvector, MAX_CMD_ARG);
 
@@ -83,15 +86,15 @@ int is_builtin() {
     return 0;
 }
 
-void do_command(char *command, char *pString[MAX_CMD_ARG], int command_number) {
+void do_command(char *command, char *cmdlist[MAX_CMD_ARG], int command_number) {
     switch (command_number) {
         case CD:
-            change_directory();
-//            printf("cd\n");
+            if(change_directory(cmdlist[1])==-1)
+                fatal("cd");
             break;
         case PWD:
-            get_current_directory();
-//            printf("pwd\n");
+            if(get_current_directory() == -1)
+                fatal("pwd");
             break;
         case EXIT:
             exit(0);
