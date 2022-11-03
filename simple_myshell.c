@@ -10,6 +10,9 @@
 #define MAX_CMD_ARG 10
 #define BUF_SIZE 256
 
+#define FOREGROUND 0
+#define BACKGROUND 1
+
 #define CD 0
 #define PWD 1
 #define EXIT 2
@@ -17,11 +20,18 @@
 const char *prompt = "myshell> ";
 char *cmdvector[MAX_CMD_ARG];
 char cmdline[BUF_SIZE];
+
 char *commands[3] = {"cd", "pwd", "exit"};
 
 int is_builtin();
 
 void do_command(char *string, char *cmdlist[10], int i);
+
+void do_process(int type);
+
+void wait_or_not(int type, pid_t i);
+
+int type_check(int count);
 
 void fatal(char *str) {
     perror(str);
@@ -53,25 +63,59 @@ int makelist(char *s, const char *delimiters, char **list, int MAX_LIST) {
 int main(int argc, char **argv) {
     int i = 0;
     pid_t pid;
+
+    int type;
     while (1) {
         fputs(prompt, stdout);
         fgets(cmdline, BUF_SIZE, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
-        makelist(cmdline, " \t", cmdvector, MAX_CMD_ARG);
+        int arguments_count = makelist(cmdline, " \t", cmdvector, MAX_CMD_ARG);
 
         if (is_builtin() > 0) continue;
 
-        switch (pid = fork()) {
-            case 0:
-                execvp(cmdvector[0], cmdvector);
-                fatal("main()");
-            case -1:
-                fatal("main()");
-            default:
-                wait(NULL);
-        }
+        type = type_check(arguments_count);
+        do_process(type);
     }
     return 0;
+}
+
+int type_check(int count) {
+    char *last_argument = cmdvector[count - 1];
+    int last_length = strlen(last_argument);
+
+    if (last_argument[last_length - 1] == '&') {
+        if (last_length == 1)
+            cmdvector[count - 1] = NULL;
+        else if (last_length > 1)
+            cmdvector[count - 1][last_length - 1] = '\0';
+        else
+            fatal("type_check()");
+
+        return BACKGROUND;
+    } else
+        return FOREGROUND;
+}
+
+void do_process(int type) {
+    pid_t pid;
+    switch (pid = fork()) {
+        case 0:
+            execvp(cmdvector[0], cmdvector);
+            fatal("main()");
+        case -1:
+            fatal("main()");
+        default:
+            wait_or_not(type, pid);
+    }
+}
+
+void wait_or_not(int type, pid_t pid) {
+    if (type == FOREGROUND)
+        wait(NULL);
+    else if (type == BACKGROUND)
+        waitpid(pid, NULL, WNOHANG);
+    else
+        fatal("wait_or_not()");
 }
 
 int is_builtin() {
@@ -89,11 +133,16 @@ int is_builtin() {
 void do_command(char *command, char *cmdlist[MAX_CMD_ARG], int command_number) {
     switch (command_number) {
         case CD:
-            if(change_directory(cmdlist[1])==-1)
+            if (change_directory(cmdlist[1]) == -1)
                 fatal("cd");
             break;
+            /**
+             * 보통 pwd을 /bin/pwd를 가지고 있어서 구현을 안해도 실행이 되지만
+             * 엄밀히 따지면 pwd은 기본적으로 쉘 내장함수라서 일단은 구현을 했습니다.
+             * 해당 프로젝트는 시스템콜을 통해 쉘의 내장 함수로서 pwd가 작동됩니다.
+             */
         case PWD:
-            if(get_current_directory() == -1)
+            if (get_current_directory() == -1)
                 fatal("pwd");
             break;
         case EXIT:
