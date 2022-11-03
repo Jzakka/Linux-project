@@ -21,7 +21,7 @@ const char *prompt = "myshell> ";
 char *cmdvector[MAX_CMD_ARG];
 char cmdline[BUF_SIZE];
 
-char *commands[3] = {"cd", "pwd", "exit"};
+const char *commands[3] = {"cd", "pwd", "exit"};
 
 int is_builtin();
 
@@ -61,20 +61,21 @@ int makelist(char *s, const char *delimiters, char **list, int MAX_LIST) {
 }
 
 int main(int argc, char **argv) {
-    int i = 0;
-    pid_t pid;
-
     int type;
     while (1) {
         fputs(prompt, stdout);
         fgets(cmdline, BUF_SIZE, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
+//        printf("fputs: %d cmdline: %s\n", fputs(cmdline, stdout), cmdline);
         int arguments_count = makelist(cmdline, " \t", cmdvector, MAX_CMD_ARG);
+
+        if(!arguments_count) continue;
 
         if (is_builtin() > 0) continue;
 
         type = type_check(arguments_count);
         do_process(type);
+        memchr(cmdline, (char*)0, BUF_SIZE);
     }
     return 0;
 }
@@ -101,9 +102,9 @@ void do_process(int type) {
     switch (pid = fork()) {
         case 0:
             execvp(cmdvector[0], cmdvector);
-            fatal("main()");
+            fatal("do_process()");
         case -1:
-            fatal("main()");
+            fatal("do_process()");
         default:
             wait_or_not(type, pid);
     }
@@ -111,11 +112,7 @@ void do_process(int type) {
 
 void wait_or_not(int type, pid_t pid) {
     if (type == FOREGROUND)
-        wait(NULL);
-    else if (type == BACKGROUND)
-        waitpid(pid, NULL, WNOHANG);
-    else
-        fatal("wait_or_not()");
+        waitpid(pid,NULL,0);
 }
 
 int is_builtin() {
@@ -149,5 +146,6 @@ void do_command(char *command, char *cmdlist[MAX_CMD_ARG], int command_number) {
             exit(0);
         default:
             fatal("do_command()");
+            break;
     }
 }
