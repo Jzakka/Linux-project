@@ -44,6 +44,9 @@ void do_process(int type, char *commands[MAX_CMD_ARG]) {
     pid_t pid;
     switch (pid = fork()) {
         case 0:
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
+            signal(SIGSTOP, SIG_DFL);
             execvp(commands[0], commands);
             fatal("do_process()");
         case -1:
@@ -54,8 +57,10 @@ void do_process(int type, char *commands[MAX_CMD_ARG]) {
 }
 
 void wait_or_not(int type, pid_t pid) {
-    if (type == FOREGROUND)
+    if (type == FOREGROUND){
         waitpid(pid,NULL,0);
+//        printf("pid: %d\n", pid);
+    }
 }
 
 int is_builtin(char *commands[MAX_CMD_ARG]) {
