@@ -1,8 +1,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include "array.h"
 
 #include "command.h"
 #include "builtin/change_directory.h"
@@ -40,13 +42,41 @@ int type_check(int count, char* commands[MAX_CMD_ARG]) {
         return FOREGROUND;
 }
 
-void do_process(int type, char *commands[MAX_CMD_ARG]) {
+void redirect_resolve(char** cmdvector, int arguments_count, int* redirect_input, int* redirect_output){
+    int input_index = indexOf(cmdvector, arguments_count, "<");
+    int output_index = indexOf(cmdvector, arguments_count, ">");
+
+    if(input_index != -1){
+        char *input_filename = cmdvector[input_index + 1];
+        if((*redirect_input = open(input_filename, O_RDONLY)) == -1){
+            fatal("input redirect");
+        }
+        cmdvector[input_index] = NULL;
+        cmdvector[input_index+1] = NULL;
+    }
+    if (output_index != -1) {
+        char *output_filename = cmdvector[output_index + 1];
+        if((*redirect_output = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1){
+            fatal("output redirect");
+        }
+        cmdvector[output_index] = NULL;
+        cmdvector[output_index+1] = NULL;
+    }
+}
+
+void do_process(int type, char *commands[MAX_CMD_ARG], int input_fd, int output_fd) {
     pid_t pid;
     switch (pid = fork()) {
         case 0:
+            // SET SIGNAL
             signal(SIGINT, SIG_DFL);
             signal(SIGQUIT, SIG_DFL);
             signal(SIGSTOP, SIG_DFL);
+
+            // SET REDIRECT
+            dup2(input_fd, 0);
+            dup2(output_fd, 1);
+
             execvp(commands[0], commands);
             fatal("do_process()");
         case -1:

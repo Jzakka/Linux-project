@@ -1,0 +1,1 @@
+int indexOf(char** stringArray, int arraySize, char* target);

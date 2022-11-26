@@ -11,7 +11,8 @@
 const char *prompt = "myshell> ";
 char *cmdvector[MAX_CMD_ARG];
 char cmdline[BUF_SIZE];
-
+int redirect_input = 0;
+int redirect_output = 1;
 static sigjmp_buf jmpbuf;
 static volatile sig_atomic_t canjump;
 
@@ -71,6 +72,8 @@ int main(int argc, char **argv) {
 
     int type;
     while (1) {
+        redirect_input = 0;
+        redirect_output = 1;
         sigsetjmp(jmpbuf, 1);
         canjump = 1;
         memchr(cmdline, (char *) 0, BUF_SIZE);
@@ -85,7 +88,10 @@ int main(int argc, char **argv) {
         if (is_builtin(cmdvector) > 0) continue;
 
         type = type_check(arguments_count, cmdvector);
-        do_process(type, cmdvector);
+
+        redirect_resolve(cmdvector, arguments_count, &redirect_input, &redirect_output);
+
+        do_process(type, cmdvector, redirect_input, redirect_output);
     }
     return 0;
 }
@@ -97,7 +103,7 @@ void ignoreIntQuit(int signo) {
     siglongjmp(jmpbuf, 1);
 }
 
-void waitChild(int signo){
+void waitChild(int signo) {
     pid_t pid = waitpid(-1, NULL, 0);
 //    printf("background ended, pid: %d\n", pid);
 }
