@@ -95,26 +95,39 @@ int main(int argc, char **argv) {
 
         if (is_builtin(cmdvector) > 0) continue;
 
+        /**
+         * 한 줄을 입력받고 파이프 기호를 delimeter로 명령어들을 쪼갬
+         */
         char **arg = cmdvector;
         int row = 0;
         int col = 0;
         while (*arg != NULL) {
             if (!strcmp(*arg, "|")) {
-                session[row++][col] = NULL;
+                session[row++][col] = NULL; // 명령의 마지막 인자로 NULL을 입력
                 col = 0;
             } else {
                 session[row][col++] = *arg;
             }
             arg++;
         }
-        session[row][col] = NULL;
+        session[row][col] = NULL; // 명령의 마지막 인자로 NULL을 입력
 
+        /**
+         * session 배열에서 명령어들을 하나씩 실행
+         */
         int p[2];
         for(unsigned i = 0; i< row+1;i++) {
             int count = 0;
             while (session[i][count] != NULL) count++;
 
+            /**
+             * 백그라운드 실행인지 체크
+             */
             type = type_check(&count, session[i]);
+
+            /**
+             * 리다이렉션을 체크
+             */
             int input_index = indexOf(session[i], count, "<");
             int output_index = indexOf(session[i], count, ">");
 
@@ -139,6 +152,10 @@ int main(int argc, char **argv) {
 
             pipe(p);
             pid_t pid;
+
+            /**
+             * 명령어 실행
+             */
             switch (pid = fork()) {
                 case 0:
                     // SET SIGNAL
