@@ -42,30 +42,35 @@ int type_check(int* count, char* commands[MAX_CMD_ARG]) {
         return FOREGROUND;
 }
 
-void redirect_resolve(char** cmdvector, int arguments_count, int* redirect_input, int* redirect_output){
-    int input_index = indexOf(cmdvector, arguments_count, "<");
-    int output_index = indexOf(cmdvector, arguments_count, ">");
+void redirect_resolve(char *commands[MAX_CMD_ARG], int count, int* redirect_input, int* redirect_output){
+    int input_index = indexOf(commands, count, "<");
+    int output_index = indexOf(commands, count, ">");
 
-    if(input_index != -1){
-        char *input_filename = cmdvector[input_index + 1];
-        if((*redirect_input = open(input_filename, O_RDONLY)) == -1){
-            printE(input_filename);
+    if (input_index != -1) {
+        char *input_filename = commands[input_index + 1];
+        if ((*redirect_input = open(input_filename, O_RDONLY)) == -1) {
+            perror(input_filename);
+            exit(1);
         }
-        cmdvector[input_index] = NULL;
-        cmdvector[input_index+1] = NULL;
+        commands[input_index] = NULL;
+        commands[input_index + 1] = NULL;
     }
     if (output_index != -1) {
-        char *output_filename = cmdvector[output_index + 1];
-        if((*redirect_output = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1){
-            printE(output_filename);
+        char *output_filename = commands[output_index + 1];
+        if ((*redirect_output = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1) {
+            perror(output_filename);
+            exit(1);
         }
-        cmdvector[output_index] = NULL;
-        cmdvector[output_index+1] = NULL;
+        commands[output_index] = NULL;
+        commands[output_index + 1] = NULL;
     }
 }
 
-void do_process(int type, char *commands[MAX_CMD_ARG], int input_fd, int output_fd) {
+void do_process(int type, char *commands[MAX_CMD_ARG], int i, int p[],  int row,
+                int* redirect_input, int* redirect_output) {
+    pipe(p);
     pid_t pid;
+
     switch (pid = fork()) {
         case 0:
             // SET SIGNAL
@@ -73,16 +78,24 @@ void do_process(int type, char *commands[MAX_CMD_ARG], int input_fd, int output_
             signal(SIGQUIT, SIG_DFL);
             signal(SIGSTOP, SIG_DFL);
 
+            // SET PIPE
+            if (i != row) {
+                dup2(p[1], *redirect_output);
+            }
+            close(p[0]);
+
             // SET REDIRECT
-            dup2(input_fd, 0);
-            dup2(output_fd, 1);
+            dup2(*redirect_input, 0);
+            dup2(*redirect_output, 1);
 
             execvp(commands[0], commands);
-            printE("do_process()");
+            perror("do_process()");
         case -1:
-            printE("do_process()");
+            perror("do_process()");
         default:
             wait_or_not(type, pid);
+            close(p[1]);
+            *redirect_input = p[0];
     }
 }
 

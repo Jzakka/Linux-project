@@ -9,9 +9,12 @@ int is_builtin(char *commands[MAX_CMD_ARG]);
 
 void do_command(char *commands[10], int i);
 
-void redirect_resolve(char** cmdvector, int arguments_count, int* redirect_input, int* redirect_output);
+void redirect_resolve(char *commands[MAX_CMD_ARG], int count, int* redirect_input, int* redirect_output);
 
-void do_process(int type, char *commands[MAX_CMD_ARG], int, int);
+void run_line(char *session[5][MAX_CMD_ARG], int row, int *redirect_input, int* redirect_output);
+
+void do_process(int type, char *commands[MAX_CMD_ARG], int i, int p[],  int row,
+                int* redirect_input, int* redirect_output);
 
 void wait_or_not(int type, pid_t i);
 

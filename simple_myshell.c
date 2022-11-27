@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
          * session 배열에서 명령어들을 하나씩 실행
          */
         int p[2];
-        for(unsigned i = 0; i< row+1;i++) {
+        for (unsigned i = 0; i < row + 1; i++) {
             int count = 0;
             while (session[i][count] != NULL) count++;
 
@@ -128,60 +128,12 @@ int main(int argc, char **argv) {
             /**
              * 리다이렉션을 체크
              */
-            int input_index = indexOf(session[i], count, "<");
-            int output_index = indexOf(session[i], count, ">");
-
-            if(input_index != -1){
-                char *input_filename = session[i][input_index + 1];
-                if((redirect_input = open(input_filename, O_RDONLY)) == -1){
-                    perror(input_filename);
-                    exit(1);
-                }
-                session[i][input_index] = NULL;
-                session[i][input_index+1] = NULL;
-            }
-            if (output_index != -1) {
-                char *output_filename = session[i][output_index + 1];
-                if((redirect_output = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1){
-                    perror(output_filename);
-                    exit(1);
-                }
-                session[i][output_index] = NULL;
-                session[i][output_index+1] = NULL;
-            }
-
-            pipe(p);
-            pid_t pid;
+            redirect_resolve(session[i], count, &redirect_input, &redirect_output);
 
             /**
              * 명령어 실행
              */
-            switch (pid = fork()) {
-                case 0:
-                    // SET SIGNAL
-                    signal(SIGINT, SIG_DFL);
-                    signal(SIGQUIT, SIG_DFL);
-                    signal(SIGSTOP, SIG_DFL);
-
-                    // SET PIPE
-                    if (i != row) {
-                        dup2(p[1], redirect_output);
-                    }
-                    close(p[0]);
-
-                    // SET REDIRECT
-                    dup2(redirect_input, 0);
-                    dup2(redirect_output, 1);
-
-                    execvp(session[i][0], session[i]);
-                    perror("do_process()");
-                case -1:
-                    perror("do_process()");
-                default:
-                    wait_or_not(type, pid);
-                    close(p[1]);
-                    redirect_input = p[0];
-            }
+            do_process(type, session[i], i, p, row, &redirect_input, &redirect_output);
         }
     }
     return 0;
