@@ -15,6 +15,6 @@ void do_process(int type, char *commands[MAX_CMD_ARG], int, int);
 
 void wait_or_not(int type, pid_t i);
 
-int type_check(int count, char* commands[MAX_CMD_ARG]);
+int type_check(int* count, char* commands[MAX_CMD_ARG]);
 
 #endif

@@ -20,22 +20,22 @@
 
 const char *builtin_commands[3] = {"cd", "pwd", "exit"};
 
-void fatal(char *str) {
+void printE(char *str) {
     perror(str);
     exit(1);
 }
 
-int type_check(int count, char* commands[MAX_CMD_ARG]) {
-    char *last_argument = commands[count - 1];
+int type_check(int* count, char* commands[MAX_CMD_ARG]) {
+    char *last_argument = commands[*count - 1];
     int last_length = strlen(last_argument);
 
     if (last_argument[last_length - 1] == '&') {
         if (last_length == 1)
-            commands[count - 1] = NULL;
+            commands[--(*count)] = NULL;
         else if (last_length > 1)
-            commands[count - 1][last_length - 1] = '\0';
+            commands[--(*count)][last_length - 1] = '\0';
         else
-            fatal("type_check()");
+            printE("type_check()");
 
         return BACKGROUND;
     } else
@@ -49,7 +49,7 @@ void redirect_resolve(char** cmdvector, int arguments_count, int* redirect_input
     if(input_index != -1){
         char *input_filename = cmdvector[input_index + 1];
         if((*redirect_input = open(input_filename, O_RDONLY)) == -1){
-            fatal("input redirect");
+            printE(input_filename);
         }
         cmdvector[input_index] = NULL;
         cmdvector[input_index+1] = NULL;
@@ -57,7 +57,7 @@ void redirect_resolve(char** cmdvector, int arguments_count, int* redirect_input
     if (output_index != -1) {
         char *output_filename = cmdvector[output_index + 1];
         if((*redirect_output = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1){
-            fatal("output redirect");
+            printE(output_filename);
         }
         cmdvector[output_index] = NULL;
         cmdvector[output_index+1] = NULL;
@@ -78,9 +78,9 @@ void do_process(int type, char *commands[MAX_CMD_ARG], int input_fd, int output_
             dup2(output_fd, 1);
 
             execvp(commands[0], commands);
-            fatal("do_process()");
+            printE("do_process()");
         case -1:
-            fatal("do_process()");
+            printE("do_process()");
         default:
             wait_or_not(type, pid);
     }
@@ -123,7 +123,7 @@ void do_command(char *commands[MAX_CMD_ARG], int command_number) {
         case EXIT:
             exit(0);
         default:
-            fatal("do_command()");
+            printE("do_command()");
             break;
     }
 }
